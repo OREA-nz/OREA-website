@@ -46,8 +46,8 @@ async function fetchProductVariants(handle: string): Promise<{ variants: LiveVar
       id: gidToNumber(node.id),
       title: node.title,
       price: Math.round(parseFloat(node.price.amount)),
-      option1: opt('metal') || opts[0]?.value ?? '',
-      option2: opt('carat') || opts[1]?.value ?? '',
+      option1: opt('metal') || (opts[0]?.value ?? ''),
+      option2: opt('carat') || (opts[1]?.value ?? ''),
     };
   });
 
