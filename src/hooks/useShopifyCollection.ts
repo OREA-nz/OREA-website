@@ -51,15 +51,20 @@ function mapNode(node: ShopifyProductNode): CollectionProduct {
   const tags = node.tags.map(t => t.toLowerCase());
   const shape = SHAPE_TAGS.find(s => tags.includes(s.toLowerCase()));
   const images = node.images.edges.map(e => e.node.url);
+
+  // Reuse the matching static product's id so /product/:id links stay consistent
+  // with what ProductPage expects (e.g. 'ring-9', not 'oval-solitaire-ring')
+  const staticMatch = COLLECTION_PRODUCTS.find(p => p.shopifyHandle === node.handle);
+
   return {
-    id: node.handle,
+    id: staticMatch?.id ?? node.handle,
     name: node.title,
     price: Math.round(parseFloat(node.priceRange.minVariantPrice.amount)),
     category: mapProductType(node.productType, node.title),
-    shape,
+    shape: staticMatch?.shape ?? shape,
     shopifyHandle: node.handle,
     imageUrl: images[0] ?? '',
-    hoverImageUrl: images[1] ?? images[0] ?? '',
+    hoverImageUrl: images[1] ?? (images[0] ?? ''),
     isNew: node.tags.includes('new'),
     isBestSeller: node.tags.includes('best-seller') || node.tags.includes('bestseller'),
   };
