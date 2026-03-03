@@ -30,10 +30,11 @@ const ProductPage: React.FC = () => {
   const { id } = useParams();
   const { getProduct } = useShopifyProducts();
 
-  // id may be the static product id ('ring-9') or a Shopify handle ('oval-solitaire-ring')
-  // when navigating from the live collection page
+  // id is a Shopify handle ('oval-solitaire-ring') when coming from the collection page,
+  // or a static id ('ring-9') when coming from RelatedProducts / FeaturedProducts.
+  // Try shopifyHandle first (canonical Shopify identifier), then fall back to static id.
   const base = useMemo(
-    () => PRODUCTS.find(p => p.id === id) ?? PRODUCTS.find(p => p.shopifyHandle === id),
+    () => PRODUCTS.find(p => p.shopifyHandle === id) ?? PRODUCTS.find(p => p.id === id),
     [id],
   );
   const isRing = base?.category === 'Rings';

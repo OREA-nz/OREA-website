@@ -195,7 +195,7 @@ const CollectionPage: React.FC = () => {
         {!isLoading && (
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-16 md:gap-x-12 md:gap-y-24">
             {processedProducts.map((product) => (
-              <Link key={product.id} to={`/product/${product.id}`}>
+              <Link key={product.id} to={`/product/${product.shopifyHandle || product.id}`}>
                 <ProductCard product={product} />
               </Link>
             ))}
