@@ -19,20 +19,22 @@ const SHAPE_TAGS: DiamondShape[] = [
 
 function mapProductType(productType: string, title: string = ''): Category {
   // Primary: use Shopify productType field
+  // 'earring' must be checked before 'ring' — "earring" contains "ring" as a substring
   const t = productType.toLowerCase();
+  if (t.includes('earring'))  return 'Earrings';
   if (t.includes('ring'))     return 'Rings';
   if (t.includes('necklace')) return 'Necklaces';
-  if (t.includes('earring'))  return 'Earrings';
   if (t.includes('bracelet')) return 'Bracelets';
   if (t.includes('pendant'))  return 'Pendants';
 
   // Fallback: infer from product title when productType is empty or unrecognised
+  // Same ordering rule applies: earring/stud before ring
   const h = title.toLowerCase();
-  if (h.includes('ring') || h.includes('band') || h.includes('solitaire ring')) return 'Rings';
-  if (h.includes('necklace'))          return 'Necklaces';
   if (h.includes('earring') || h.includes('stud')) return 'Earrings';
-  if (h.includes('bracelet'))          return 'Bracelets';
-  if (h.includes('pendant'))           return 'Pendants';
+  if (h.includes('ring') || h.includes('band'))    return 'Rings';
+  if (h.includes('necklace'))                      return 'Necklaces';
+  if (h.includes('bracelet'))                      return 'Bracelets';
+  if (h.includes('pendant'))                       return 'Pendants';
 
   return 'All';
 }
