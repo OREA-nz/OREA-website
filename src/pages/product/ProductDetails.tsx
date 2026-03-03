@@ -76,10 +76,14 @@ const ProductDetails: React.FC<ProductDetailsProps> = ({
 
   useEffect(() => {
     if (product.variants) {
-      const match = product.variants.find(v => v.option1?.trim() === selectedMetal.trim());
+      const match = product.variants.find(v => {
+        const metalMatch = v.option1?.trim() === selectedMetal.trim();
+        if (!selectedCarat) return metalMatch;
+        return metalMatch && v.option2?.trim() === selectedCarat.trim();
+      });
       setCurrentVariant(match || null);
     }
-  }, [selectedMetal, product.variants]);
+  }, [selectedMetal, selectedCarat, product.variants]);
 
   const handleAddToCart = async () => {
     if (!currentVariant) {

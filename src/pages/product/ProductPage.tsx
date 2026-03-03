@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
 import ProductGallery from './ProductGallery';
@@ -14,6 +14,7 @@ import { PRODUCTS } from '../collection/constants';
 import { useShopifyProducts } from '../../hooks/useShopifyProducts';
 import { useShopifyProductVariants } from '../../hooks/useShopifyProductVariants';
 
+// Rings with no carat selector (bands / multi-stone designs)
 const NO_CARAT_RINGS = [
   'Alternating Diamond Band',
   'Hera Trilogy Three-Stone Ring',
@@ -23,56 +24,54 @@ const NO_CARAT_RINGS = [
   'Pavé Half Eternity Band',
 ];
 
-const RING_SIZE_OPTIONS = ['F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
-const SHAPE_OPTIONS = ['Round', 'Oval', 'Emerald', 'Pear', 'Marquise', 'Princess', 'Radiant', 'Asscher', 'Cushion', 'Heart'];
+const RING_SIZE_OPTIONS = ['F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
+const SHAPE_OPTIONS    = ['Round','Oval','Emerald','Pear','Marquise','Princess','Radiant','Asscher','Cushion','Heart'];
+const FALLBACK_IMAGE   = 'https://www.orea.co.nz/cdn/shop/files/ClassicSolitaireRing-Emerald-1_1200x.jpg?v=1710924432';
 
 const ProductPage: React.FC = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const { getProduct } = useShopifyProducts();
 
-  // id is a Shopify handle ('oval-solitaire-ring') when coming from the collection page,
-  // or a static id ('ring-9') when coming from RelatedProducts / FeaturedProducts.
-  // Try shopifyHandle first (canonical Shopify identifier), then fall back to static id.
+  // Resolve base product — URL :id may be a shopifyHandle or a static product id
   const base = useMemo(
     () => PRODUCTS.find(p => p.shopifyHandle === id) ?? PRODUCTS.find(p => p.id === id),
     [id],
   );
+
   const isRing = base?.category === 'Rings';
 
-  // Live prices and images — falls back gracefully when Shopify is not configured
-  const { liveVariants, liveImages } = useShopifyProductVariants(base?.shopifyHandle || '');
+  // Live variant prices + images (no-op when Shopify not configured)
+  const { liveVariants, liveImages } = useShopifyProductVariants(base?.shopifyHandle ?? '');
 
+  // Build the full Product object consumed by ProductDetails
   const product: Product | undefined = useMemo(() => {
     if (!base) return undefined;
 
     const isRingProduct = base.category === 'Rings';
-    const hasCarat = isRingProduct && !NO_CARAT_RINGS.includes(base.name);
+    const hasCarat      = isRingProduct && !NO_CARAT_RINGS.includes(base.name);
+    const shopifyData   = base.shopifyHandle ? getProduct(base.shopifyHandle) : null;
 
-    // Use real Shopify variants from products.json when available
-    const shopifyProduct = base.shopifyHandle ? getProduct(base.shopifyHandle) : null;
-
-    let variants: NonNullable<Product['variants']>;
+    let variants:    NonNullable<Product['variants']>;
     let metalOptions: string[];
     let caratOptions: string[];
 
-    if (shopifyProduct?.variants?.length) {
-      // Real Shopify variants — option1 = Metal, option2 = Carat
-      variants = shopifyProduct.variants.map(v => {
+    if (shopifyData?.variants?.length) {
+      // Real Shopify variants: option1 = Metal, option2 = Carat (empty for metal-only)
+      variants = shopifyData.variants.map(v => {
         const live = liveVariants.find(lv => lv.id === parseInt(v.variantId, 10));
         return {
-          id: parseInt(v.variantId, 10),
-          title: v.title,
-          option1: v.option1,
-          option2: v.option2,
-          price: live?.price ?? v.price,
+          id:        parseInt(v.variantId, 10),
+          title:     v.title,
+          option1:   v.option1,
+          option2:   v.option2,
+          price:     live?.price ?? v.price,
           available: true,
         };
       });
-      // Derive selectable options from the actual variant data
       metalOptions = [...new Set(variants.map(v => v.option1))];
       caratOptions = [...new Set(variants.map(v => v.option2).filter(Boolean))];
     } else {
-      // Fallback: placeholder variants for demo mode (no Shopify configured)
+      // Fallback for demo / offline mode
       const metals = isRingProduct
         ? ['Platinum', '18k Yellow Gold', '18k White Gold', '14k Yellow Gold', '14k White Gold']
         : ['18k Yellow Gold', '18k White Gold', '14k Yellow Gold', '14k White Gold'];
@@ -81,15 +80,30 @@ const ProductPage: React.FC = () => {
         : [];
       metalOptions = metals;
       caratOptions = carats;
-      variants = metals.map((metal, i) => ({
-        id: i + 1,
-        title: `${metal}${carats[0] ? ` / ${carats[0]}` : ''}`,
-        option1: metal,
-        option2: carats[0] || '',
-        price: base.price,
-        available: true,
-      }));
+      variants = metals.flatMap((metal, mi) =>
+        carats.length
+          ? carats.map((carat, ci) => ({
+              id:        mi * carats.length + ci + 1,
+              title:     `${metal} / ${carat}`,
+              option1:   metal,
+              option2:   carat,
+              price:     base.price,
+              available: true,
+            }))
+          : [{
+              id:        mi + 1,
+              title:     metal,
+              option1:   metal,
+              option2:   '',
+              price:     base.price,
+              available: true,
+            }],
+      );
     }
+
+    const images = liveImages.length > 0
+      ? liveImages
+      : base.imageUrl ? [base.imageUrl] : [FALLBACK_IMAGE];
 
     return {
       ...base,
@@ -97,25 +111,31 @@ const ProductPage: React.FC = () => {
       materials: isRingProduct
         ? ['14k Gold', '18k Gold', 'Platinum', 'Lab Grown Diamond']
         : ['14k Gold', '18k Gold', 'Lab Grown Diamond'],
-      images: base.imageUrl ? [base.imageUrl] : [
-        'https://www.orea.co.nz/cdn/shop/files/ClassicSolitaireRing-Emerald-1_1200x.jpg?v=1710924432',
-      ],
+      images,
       options: {
         metal: metalOptions,
         shape: SHAPE_OPTIONS,
         carat: caratOptions,
-        size: isRingProduct ? RING_SIZE_OPTIONS : ['Standard'],
+        size:  isRingProduct ? RING_SIZE_OPTIONS : ['Standard'],
       },
       variants,
     } as Product;
-  }, [base, getProduct, liveVariants]);
+  }, [base, getProduct, liveVariants, liveImages]);
 
-  const galleryImages = liveImages.length > 0 ? liveImages : (product?.images ?? []);
+  // Selected-option state — initialised empty, populated/reset via useEffect
+  // so that navigating between products always resets to the new product's defaults
+  const [selectedMetal, setSelectedMetal] = useState('');
+  const [selectedCarat, setSelectedCarat] = useState('');
+  const [selectedShape, setSelectedShape] = useState('Round');
+  const [selectedSize,  setSelectedSize]  = useState('L');
 
-  const [selectedMetal, setSelectedMetal] = useState(product?.options.metal[0] || '');
-  const [selectedShape, setSelectedShape] = useState(product?.options.shape[0] || 'Emerald');
-  const [selectedCarat, setSelectedCarat] = useState(product?.options.carat[0] || '');
-  const [selectedSize, setSelectedSize] = useState(isRing ? 'L' : 'Standard');
+  useEffect(() => {
+    if (!product) return;
+    setSelectedMetal(product.options.metal[0] ?? '');
+    setSelectedCarat(product.options.carat[0] ?? '');
+    setSelectedShape('Round');
+    setSelectedSize(isRing ? 'L' : 'Standard');
+  }, [base?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!product) {
     return (
@@ -129,7 +149,7 @@ const ProductPage: React.FC = () => {
     <div className="min-h-screen flex flex-col bg-[#FFFFFF] pb-[120px] -mb-[120px]">
       <main className="flex-grow">
         <div className="grid grid-cols-1 lg:grid-cols-2">
-          <ProductGallery images={galleryImages} />
+          <ProductGallery images={product.images} />
 
           <div className="px-6 py-12 lg:px-16 xl:px-24">
             <div className="max-w-xl flex flex-col gap-12">
@@ -152,7 +172,7 @@ const ProductPage: React.FC = () => {
         </div>
 
         <section className="mt-40 border-t border-orea-sand pt-24">
-          <RelatedProducts currentId={id || ''} />
+          <RelatedProducts currentId={base.id} />
         </section>
       </main>
     </div>
