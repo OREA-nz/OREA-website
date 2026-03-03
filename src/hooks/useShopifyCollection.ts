@@ -17,13 +17,23 @@ const SHAPE_TAGS: DiamondShape[] = [
 
 /* ── Mapping helpers ─────────────────────────────────────────── */
 
-function mapProductType(productType: string): Category {
+function mapProductType(productType: string, title: string = ''): Category {
+  // Primary: use Shopify productType field
   const t = productType.toLowerCase();
   if (t.includes('ring'))     return 'Rings';
   if (t.includes('necklace')) return 'Necklaces';
   if (t.includes('earring'))  return 'Earrings';
   if (t.includes('bracelet')) return 'Bracelets';
   if (t.includes('pendant'))  return 'Pendants';
+
+  // Fallback: infer from product title when productType is empty or unrecognised
+  const h = title.toLowerCase();
+  if (h.includes('ring') || h.includes('band') || h.includes('solitaire ring')) return 'Rings';
+  if (h.includes('necklace'))  return 'Necklaces';
+  if (h.includes('earring'))   return 'Earrings';
+  if (h.includes('bracelet'))  return 'Bracelets';
+  if (h.includes('pendant'))   return 'Pendants';
+
   return 'All';
 }
 
@@ -45,7 +55,7 @@ function mapNode(node: ShopifyProductNode): CollectionProduct {
     id: node.handle,
     name: node.title,
     price: Math.round(parseFloat(node.priceRange.minVariantPrice.amount)),
-    category: mapProductType(node.productType),
+    category: mapProductType(node.productType, node.title),
     shape,
     shopifyHandle: node.handle,
     imageUrl: images[0] ?? '',
