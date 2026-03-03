@@ -29,10 +29,10 @@ function mapProductType(productType: string, title: string = ''): Category {
   // Fallback: infer from product title when productType is empty or unrecognised
   const h = title.toLowerCase();
   if (h.includes('ring') || h.includes('band') || h.includes('solitaire ring')) return 'Rings';
-  if (h.includes('necklace'))  return 'Necklaces';
-  if (h.includes('earring'))   return 'Earrings';
-  if (h.includes('bracelet'))  return 'Bracelets';
-  if (h.includes('pendant'))   return 'Pendants';
+  if (h.includes('necklace'))          return 'Necklaces';
+  if (h.includes('earring') || h.includes('stud')) return 'Earrings';
+  if (h.includes('bracelet'))          return 'Bracelets';
+  if (h.includes('pendant'))           return 'Pendants';
 
   return 'All';
 }

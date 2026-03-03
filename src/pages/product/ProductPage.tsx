@@ -30,7 +30,12 @@ const ProductPage: React.FC = () => {
   const { id } = useParams();
   const { getProduct } = useShopifyProducts();
 
-  const base = useMemo(() => PRODUCTS.find(p => p.id === id), [id]);
+  // id may be the static product id ('ring-9') or a Shopify handle ('oval-solitaire-ring')
+  // when navigating from the live collection page
+  const base = useMemo(
+    () => PRODUCTS.find(p => p.id === id) ?? PRODUCTS.find(p => p.shopifyHandle === id),
+    [id],
+  );
   const isRing = base?.category === 'Rings';
 
   // Live prices and images — falls back gracefully when Shopify is not configured
